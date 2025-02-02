@@ -9,6 +9,12 @@ void UItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 }
 
+//
+// TODO: Need to create a new AActor subclass and use it for all actors spawned by an item instance.
+// This can help with many things, like controlling the replication & lifetime of spawned actors (e.g., setting their 
+// outer object to owner or the persistent level)
+// Which could be useful if a character summons a minion actor, we might want to destroy the minion actor after the player dies.
+//
 void UItemInstance::SpawnItemActor()
 {
 	UInventoryComponent* Inventory = Cast<UInventoryComponent>(GetOuter());
@@ -27,18 +33,23 @@ void UItemInstance::SpawnItemActor()
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = OwnerActor;
 
+	/** Spawn the actor at the owner actor's location (if available) */
 	FTransform SpawnLocation = OwnerActor ? OwnerActor->GetTransform() : FTransform::Identity;
 
 	/** Get the UClass for this item's actor */
 	TSubclassOf<AActor> ItemActorClass = Data->GetItemActorClass();
 
-	if (ItemActorClass != nullptr)
-	{
-		World->SpawnActor<AActor>(ItemActorClass, SpawnLocation, SpawnParams);
-	}
-	else
+	if (ItemActorClass == nullptr)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UItemInstance::SpawnItemActor failed, ItemActorClass was null"));
 		return;
 	}
+
+	/** Spawn the ItemActor & set it to replicate */
+	AActor* ItemActor = World->SpawnActor<AActor>(ItemActorClass, SpawnLocation, SpawnParams);
+	ItemActor->SetReplicates(true);
+
+	// TODO: Should we set the Outer for the ItemActor to the character that owns the ItemInstance?
+
+	UE_LOG(LogTemp, Log, TEXT("ItemActor's owner: %s, ItemActor's outer: %s"), *ItemActor->Owner->GetName(), *ItemActor->GetOuter()->GetName());
 }

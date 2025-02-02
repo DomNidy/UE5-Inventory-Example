@@ -11,3 +11,15 @@ UInventoryComponent::UInventoryComponent()
 	bReplicateUsingRegisteredSubObjectList = true;
 }
 
+void UInventoryComponent::ServerCreateItemInInventory_Implementation(TSubclassOf<UItemInstance> ItemClass, UItemData* ItemData)
+{
+	CreateItemInInventory(ItemClass, ItemData);
+}
+
+
+void UInventoryComponent::OnRep_Items()
+{
+	UE_LOG(LogTemp, Log, TEXT("OnRep_Items!"));
+
+}
+

@@ -30,6 +30,13 @@ public:
 	{
 		UE_LOG(LogTemp, Log, TEXT("UInventoryComponent::CreateItemInInventory called on %s"), GetOwner()->HasAuthority() ? TEXT("Server") : TEXT("Client"));
 
+		// If called on client, make a server rpc to ServerCreateItemInInventory
+		if (!GetOwner()->HasAuthority())
+		{
+			UE_LOG(LogTemp, Log, TEXT("Forwarding CreateItemInInventory call to ServerCreateItemInInventory"));
+			return ServerCreateItemInInventory(ItemClass, ItemData);
+		}
+
 		FItemInstanceInitializer ItemInitializer;
 		ItemInitializer.Outer = this;
 		ItemInitializer.OwnerActor = GetOwner();
@@ -43,7 +50,14 @@ public:
 		Item->SpawnItemActor();
 	}
 
+	/** Called by client actor, excecuted on server */
+	UFUNCTION(Server, Reliable)
+	void ServerCreateItemInInventory(TSubclassOf<UItemInstance> ItemClass, UItemData* ItemData);
+
 private:
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing = OnRep_Items)
 	TArray<TObjectPtr<UItemInstance>> Items;
+
+	UFUNCTION()
+	virtual void OnRep_Items();
 };

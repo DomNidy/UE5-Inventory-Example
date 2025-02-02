@@ -67,7 +67,7 @@ void AInvTestCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (Inventory)
+	if (Inventory && !HasAuthority())
 	{
 		UE_LOG(LogTemp, Log, TEXT("Length of items to grant: %d"), ItemsToGrant.Num());
 

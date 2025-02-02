@@ -164,7 +164,7 @@ struct FItemInstanceInitializer
  * Instantiation of this class should happen
  * solely through the CreateItemInstance method.
  */
-UCLASS(BlueprintType)
+UCLASS(BlueprintType, Abstract)
 class INVTEST_API UItemInstance : public UObject
 {
 	GENERATED_BODY()
@@ -195,11 +195,14 @@ public:
 	 * Creates a new item instance and initializes it.
 	 *
 	 * Note: This method should be called from VERY few places.
+	 *
+	 * If this is executed on client trigger an exception.
 	 */
 	UFUNCTION(BlueprintCallable)
 	static UItemInstance* CreateItemInstance(const FItemInstanceInitializer& ItemInitializer)
 	{
 		UE_LOG(LogTemp, Log, TEXT("UItemInstance::CreateItemInstance called on %s"), ItemInitializer.OwnerActor->HasAuthority() ? TEXT("Server") : TEXT("Client"));
+		checkf(ItemInitializer.OwnerActor->HasAuthority(), TEXT("UItemInstance::CreateItemInstance was called on a client, this should only be called on the server."));
 		checkf(ItemInitializer.ItemData && ItemInitializer.ItemClass && ItemInitializer.Outer && ItemInitializer.OwnerActor, TEXT("Either ItemClass, ItemData, Outer, or OwnerActor was null. ItemClass defined?: %s, ItemData defined?: %s, Outer defined?: %s, OwnerActor defined?: %s"),
 			ItemInitializer.ItemClass ? TEXT("True") : TEXT("False"),
 			ItemInitializer.ItemData ? TEXT("True") : TEXT("False"),
@@ -209,22 +212,26 @@ public:
 		UItemInstance* Item = NewObject<UItemInstance>(ItemInitializer.Outer, ItemInitializer.ItemClass);
 		Item->Data = ItemInitializer.ItemData;
 		Item->OwnerActor = ItemInitializer.OwnerActor;
+		Item->bItemAlreadyInitialized = true;
 
 		return Item;
 	}
 
-private:
+protected:
 	friend class UInventoryComponent;
 	/**
-	 * @brief A data asset that holds static data about an item instance
-	 * e.g., a mesh reference, or item name.
+	 * @brief All data needed for a particular UItemInstance subclass to function.
+	 *
+	 * For example, USwordInstance might need to store floats for its damage, a mesh
+	 * for the sword, etc.
 	 */
-	UPROPERTY(EditDefaultsOnly, Category = "Item Data")
+	UPROPERTY(BlueprintReadWrite, Category = "Item|Data")
 	TObjectPtr<UItemData> Data;
 
 	/**
 	 * @brief Pointer to the actor that logically owns this instance
 	 */
+	UPROPERTY(BlueprintReadOnly, Category = "Item|Ownership")
 	AActor* OwnerActor;
 
 	/**
@@ -232,7 +239,7 @@ private:
 	 *
 	 * For example, spawning a mesh in the world to represent a sword
 	 */
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, Category = "Item")
 	virtual void SpawnItemActor();
 private:
 	bool bItemAlreadyInitialized = false;
