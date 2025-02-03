@@ -7,6 +7,30 @@
 void UItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UItemInstance, ItemActor);
+}
+
+UItemInstance* UItemInstance::CreateItemInstance(const FItemInstanceInitializer& ItemInitializer)
+{
+	UE_LOG(LogTemp, Log, TEXT("UItemInstance::CreateItemInstance called on %s"), ItemInitializer.OwnerActor->HasAuthority() ? TEXT("Server") : TEXT("Client"));
+	checkf(ItemInitializer.OwnerActor->HasAuthority(), TEXT("UItemInstance::CreateItemInstance was called on a client, this should only be called on the server."));
+	checkf(ItemInitializer.ItemData && ItemInitializer.ItemClass && ItemInitializer.Outer && ItemInitializer.OwnerActor, TEXT("Either ItemClass, ItemData, Outer, or OwnerActor was null. ItemClass defined?: %s, ItemData defined?: %s, Outer defined?: %s, OwnerActor defined?: %s"),
+		ItemInitializer.ItemClass ? TEXT("True") : TEXT("False"),
+		ItemInitializer.ItemData ? TEXT("True") : TEXT("False"),
+		ItemInitializer.Outer ? TEXT("True") : TEXT("False"),
+		ItemInitializer.OwnerActor ? TEXT("True") : TEXT("False"));
+
+	UItemInstance* Item = NewObject<UItemInstance>(ItemInitializer.Outer, ItemInitializer.ItemClass);
+	Item->Data = ItemInitializer.ItemData;
+	Item->OwnerActor = ItemInitializer.OwnerActor;
+
+	return Item;
+}
+
+bool UItemInstance::IsItemActorSpawned() const
+{
+	return IsValid(ItemActor);
 }
 
 //
@@ -46,10 +70,27 @@ void UItemInstance::SpawnItemActor()
 	}
 
 	/** Spawn the ItemActor & set it to replicate */
-	AActor* ItemActor = World->SpawnActor<AActor>(ItemActorClass, SpawnLocation, SpawnParams);
-	ItemActor->SetReplicates(true);
+	AActor* SpawnedItemActor = World->SpawnActor<AActor>(ItemActorClass, SpawnLocation, SpawnParams);
 
-	// TODO: Should we set the Outer for the ItemActor to the character that owns the ItemInstance?
+	/** Bind to item actor lifecycle delegates */
+	SpawnedItemActor->OnDestroyed.AddDynamic(this, &UItemInstance::HandleItemActorDestroyed);
 
-	UE_LOG(LogTemp, Log, TEXT("ItemActor's owner: %s, ItemActor's outer: %s"), *ItemActor->Owner->GetName(), *ItemActor->GetOuter()->GetName());
+	ItemActor = SpawnedItemActor;
+	SpawnedItemActor->SetReplicates(true);
+
+	UE_LOG(LogTemp, Log, TEXT("Spawned an ItemActor: ItemActor's owner: %s, ItemActor's outer: %s"), *SpawnedItemActor->Owner->GetName(), *SpawnedItemActor->GetOuter()->GetName());
+}
+
+void UItemInstance::DestroyItemActor()
+{
+	if (IsValid(ItemActor))
+	{
+		ItemActor->Destroy();
+	}
+}
+
+void UItemInstance::HandleItemActorDestroyed(AActor* InActor)
+{
+	UE_LOG(LogTemp, Log, TEXT("UItemInstance::HandleItemActorDestroyed: %s was destroyed!"), *InActor->GetName());
+	ItemActor = nullptr;
 }

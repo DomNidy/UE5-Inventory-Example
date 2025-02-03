@@ -23,37 +23,24 @@ public:
 
 		DOREPLIFETIME(UInventoryComponent, Items);
 	}
-
-	// Creates an item instance using ItemData
+	/**
+	 * @brief Creates an item instance, adding it to this inventory
+	 * @param ItemClass UItemInstance subclass to create a new instance of
+	 * @param ItemData Data to initialize the new instance with
+	 * @return if executed on server, a pointer to the newly created instance, or nullptr if on client
+	 */
 	UFUNCTION(BlueprintCallable)
-	void CreateItemInInventory(TSubclassOf<UItemInstance> ItemClass, UItemData* ItemData)
-	{
-		UE_LOG(LogTemp, Log, TEXT("UInventoryComponent::CreateItemInInventory called on %s"), GetOwner()->HasAuthority() ? TEXT("Server") : TEXT("Client"));
-
-		// If called on client, make a server rpc to ServerCreateItemInInventory
-		if (!GetOwner()->HasAuthority())
-		{
-			UE_LOG(LogTemp, Log, TEXT("Forwarding CreateItemInInventory call to ServerCreateItemInInventory"));
-			return ServerCreateItemInInventory(ItemClass, ItemData);
-		}
-
-		FItemInstanceInitializer ItemInitializer;
-		ItemInitializer.Outer = this;
-		ItemInitializer.OwnerActor = GetOwner();
-		ItemInitializer.ItemClass = ItemClass;
-		ItemInitializer.ItemData = ItemData;
-
-		UItemInstance* Item = UItemInstance::CreateItemInstance(ItemInitializer);
-		Items.Add(Item);
-
-		// For fun try spawn actor
-		Item->SpawnItemActor();
-	}
+	const UItemInstance* CreateItemInInventory(TSubclassOf<UItemInstance> ItemClass, UItemData* ItemData);
 
 	/** Called by client actor, excecuted on server */
 	UFUNCTION(Server, Reliable)
 	void ServerCreateItemInInventory(TSubclassOf<UItemInstance> ItemClass, UItemData* ItemData);
 
+	/**
+	 * @brief Get const reference to all items in the inventory
+	 */
+	UFUNCTION(BlueprintCallable)
+	const TArray<UItemInstance*>& GetItemInstances() { return Items; }
 private:
 	UPROPERTY(ReplicatedUsing = OnRep_Items)
 	TArray<TObjectPtr<UItemInstance>> Items;

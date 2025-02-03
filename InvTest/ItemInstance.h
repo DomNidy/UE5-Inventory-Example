@@ -175,22 +175,6 @@ public:
 	virtual bool IsSupportedForNetworking() const override { return true; }
 	//~ End UObject Interface.
 
-	//-----------------------------------------
-	// Item lifecycle
-	//-----------------------------------------
-
-	/**
-	 * Checks if the item was already initialized, which should ALWAYS be true (since
-	 * we should only be creating items with CreateItemInstance.
-	 *
-	 * The one exception where this can be false is if calling it inside the
-	 * CreateItemInstance method after creating the item object, but before
-	 * initializing it.
-	 */
-	UFUNCTION(BlueprintCallable)
-	bool DidItemInitialize() const { return bItemAlreadyInitialized; }
-
-
 	/**
 	 * Creates a new item instance and initializes it.
 	 *
@@ -199,24 +183,7 @@ public:
 	 * If this is executed on client trigger an exception.
 	 */
 	UFUNCTION(BlueprintCallable)
-	static UItemInstance* CreateItemInstance(const FItemInstanceInitializer& ItemInitializer)
-	{
-		UE_LOG(LogTemp, Log, TEXT("UItemInstance::CreateItemInstance called on %s"), ItemInitializer.OwnerActor->HasAuthority() ? TEXT("Server") : TEXT("Client"));
-		checkf(ItemInitializer.OwnerActor->HasAuthority(), TEXT("UItemInstance::CreateItemInstance was called on a client, this should only be called on the server."));
-		checkf(ItemInitializer.ItemData && ItemInitializer.ItemClass && ItemInitializer.Outer && ItemInitializer.OwnerActor, TEXT("Either ItemClass, ItemData, Outer, or OwnerActor was null. ItemClass defined?: %s, ItemData defined?: %s, Outer defined?: %s, OwnerActor defined?: %s"),
-			ItemInitializer.ItemClass ? TEXT("True") : TEXT("False"),
-			ItemInitializer.ItemData ? TEXT("True") : TEXT("False"),
-			ItemInitializer.Outer ? TEXT("True") : TEXT("False"),
-			ItemInitializer.OwnerActor ? TEXT("True") : TEXT("False"));
-
-		UItemInstance* Item = NewObject<UItemInstance>(ItemInitializer.Outer, ItemInitializer.ItemClass);
-		Item->Data = ItemInitializer.ItemData;
-		Item->OwnerActor = ItemInitializer.OwnerActor;
-		Item->bItemAlreadyInitialized = true;
-
-		return Item;
-	}
-
+	static UItemInstance* CreateItemInstance(const FItemInstanceInitializer& ItemInitializer);
 protected:
 	friend class UInventoryComponent;
 	/**
@@ -234,6 +201,12 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Item|Ownership")
 	AActor* OwnerActor;
 
+	//--------------------------------------------
+	// Item actors
+	//--------------------------------------------
+
+	/** Indicates whether or not the ItemActor is already in the scene (true if yes, false if not)*/
+	virtual bool IsItemActorSpawned() const;
 	/**
 	 * @brief Overridable function that can be used to implement creating actors/world representations of item instances
 	 *
@@ -241,6 +214,22 @@ protected:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Item")
 	virtual void SpawnItemActor();
+
+	/**
+	 * @brief Overridable function that can be used to implement destroying spawned actors that were spawned with SpawnItemActor()
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Item")
+	virtual void DestroyItemActor();
 private:
-	bool bItemAlreadyInitialized = false;
+	/**
+	 * @brief Invoked when the item actor is destroyed. 
+	 * 
+	 * Note: This method is bound to the OnDestroyed delegate of the actor, so it will be implicitly executed whenever
+	 * the actor is destroyed.
+	 */
+	UFUNCTION()
+	virtual void HandleItemActorDestroyed(AActor* InActor);
+private:
+	UPROPERTY(Replicated)
+	TObjectPtr<AActor> ItemActor;
 };
