@@ -23,6 +23,10 @@ public:
 
 		DOREPLIFETIME(UInventoryComponent, Items);
 	}
+
+	//--------------------------------------------
+	// Item instances: Creating
+	//--------------------------------------------
 	/**
 	 * @brief Creates an item instance, adding it to this inventory
 	 * @param ItemClass UItemInstance subclass to create a new instance of
@@ -32,7 +36,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	const UItemInstance* CreateItemInInventory(TSubclassOf<UItemInstance> ItemClass, UItemData* ItemData);
 
-	/** Called by client actor, excecuted on server */
 	UFUNCTION(Server, Reliable)
 	void ServerCreateItemInInventory(TSubclassOf<UItemInstance> ItemClass, UItemData* ItemData);
 
@@ -41,6 +44,31 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable)
 	const TArray<UItemInstance*>& GetItemInstances() { return Items; }
+
+public:
+	//--------------------------------------------
+	// Item actors: Spawning & Destroying 
+	//--------------------------------------------
+	/**
+	 * @brief Performs authority checks and validation before spawning
+	 * an ItemActor.
+	 */
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Items")
+	virtual void ServerSpawnItemActor(UItemInstance* InItemInstance);
+	/**
+	 * @brief Performs authority checks and validation before destroying
+	 * an ItemActor.
+	 */
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Items")
+	virtual void ServerDestroyItemActor(UItemInstance* InItemInstance);
+
+	/** Indicates whether or not the ItemActor is already in the scene (true if yes, false if not)*/
+	virtual bool IsItemActorSpawned(UItemInstance* InItemInstance) const;
+private:
+	/**
+	 * @brief Set of all item instances that have a currently spawned actor
+	 */
+	TSet<UItemInstance*> SpawnedItemActors;
 private:
 	UPROPERTY(ReplicatedUsing = OnRep_Items)
 	TArray<TObjectPtr<UItemInstance>> Items;

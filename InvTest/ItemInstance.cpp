@@ -28,9 +28,28 @@ UItemInstance* UItemInstance::CreateItemInstance(const FItemInstanceInitializer&
 	return Item;
 }
 
-bool UItemInstance::IsItemActorSpawned() const
+
+
+AActor* UItemInstance::TrySpawnItemActor()
 {
-	return IsValid(ItemActor);
+	if (!CanSpawnItemActor())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s TrySpawnItemActor failed because CanSpawnItemActor() returned false!"), *GetName());
+		return nullptr;
+	}
+
+	return InternalSpawnItemActor();
+}
+
+bool UItemInstance::TryDestroyItemActor()
+{
+	if (!CanDestroyItemActor())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s TryDestroyItemActor failed because CanDestroyItemActor() returned false!"), *GetName());
+		return false;
+	}
+
+	return InternalDestroyItemActor();
 }
 
 //
@@ -39,7 +58,7 @@ bool UItemInstance::IsItemActorSpawned() const
 // outer object to owner or the persistent level)
 // Which could be useful if a character summons a minion actor, we might want to destroy the minion actor after the player dies.
 //
-void UItemInstance::SpawnItemActor()
+AActor* UItemInstance::InternalSpawnItemActor()
 {
 	UInventoryComponent* Inventory = Cast<UInventoryComponent>(GetOuter());
 	check(Inventory);
@@ -47,10 +66,10 @@ void UItemInstance::SpawnItemActor()
 	UWorld* World = Inventory->GetWorld();
 	check(World);
 
-	if (Inventory->GetOwnerRole() != ENetRole::ROLE_Authority)
+	if (!Inventory->GetOwner()->HasAuthority())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("UItemInstance::SpawnItemActor called on client-side (must be on authority)"));
-		return;
+		UE_LOG(LogTemp, Warning, TEXT("UItemInstance::SpawnItemActor was called on non-authoritative machine, must be on authority."));
+		return nullptr;
 	}
 
 	/** Use this struct to customize spawning behavior */
@@ -66,7 +85,7 @@ void UItemInstance::SpawnItemActor()
 	if (ItemActorClass == nullptr)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UItemInstance::SpawnItemActor failed, ItemActorClass was null"));
-		return;
+		return nullptr;
 	}
 
 	/** Spawn the ItemActor & set it to replicate */
@@ -79,14 +98,41 @@ void UItemInstance::SpawnItemActor()
 	SpawnedItemActor->SetReplicates(true);
 
 	UE_LOG(LogTemp, Log, TEXT("Spawned an ItemActor: ItemActor's owner: %s, ItemActor's outer: %s"), *SpawnedItemActor->Owner->GetName(), *SpawnedItemActor->GetOuter()->GetName());
+
+	return SpawnedItemActor;
 }
 
-void UItemInstance::DestroyItemActor()
+
+bool UItemInstance::InternalDestroyItemActor()
 {
+	UInventoryComponent* Inventory = Cast<UInventoryComponent>(GetOuter());
+	check(Inventory);
+
+	UWorld* World = Inventory->GetWorld();
+	check(World);
+
+	if (!Inventory->GetOwner()->HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UItemInstance::DestroyItemActor was called on non-authoritative machine, must be on authority."));
+		return false;
+	}
+
 	if (IsValid(ItemActor))
 	{
-		ItemActor->Destroy();
+		return ItemActor->Destroy();
 	}
+
+	return false;
+}
+
+bool UItemInstance::CanSpawnItemActor()
+{
+	return true;
+}
+
+bool UItemInstance::CanDestroyItemActor()
+{
+	return true;
 }
 
 void UItemInstance::HandleItemActorDestroyed(AActor* InActor)

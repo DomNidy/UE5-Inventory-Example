@@ -3,17 +3,15 @@
 
 #include "InventoryComponent.h"
 
-// Sets default values for this component's properties
 UInventoryComponent::UInventoryComponent()
 {
-
 	SetIsReplicatedByDefault(true);
 	bReplicateUsingRegisteredSubObjectList = true;
 }
 
 const UItemInstance* UInventoryComponent::CreateItemInInventory(TSubclassOf<UItemInstance> ItemClass, UItemData* ItemData)
 {
-	UE_LOG(LogTemp, Log, TEXT("UInventoryComponent::CreateItemInInventory called on %s"), GetOwner()->HasAuthority() ? TEXT("Server") : TEXT("Client"));
+	UE_LOG(LogTemp, Log, TEXT("UInventoryComponent::CreateItemInInventory called with role: %s"), *UEnum::GetValueAsString(GetOwnerRole()));
 
 	// If called on client, make a server rpc to ServerCreateItemInInventory
 	if (!GetOwner()->HasAuthority())
@@ -38,7 +36,6 @@ const UItemInstance* UInventoryComponent::CreateItemInInventory(TSubclassOf<UIte
 
 	Items.Add(Item);
 
-
 	return Item;
 }
 
@@ -47,6 +44,48 @@ void UInventoryComponent::ServerCreateItemInInventory_Implementation(TSubclassOf
 	CreateItemInInventory(ItemClass, ItemData);
 }
 
+void UInventoryComponent::ServerSpawnItemActor_Implementation(UItemInstance* InItemInstance)
+{
+	if (IsItemActorSpawned(InItemInstance))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Tried to spawn an ItemActor, but the instance's ItemActor is already spawned"));
+		return;
+	}
+
+	AActor* SpawnedItemActor = InItemInstance->TrySpawnItemActor();
+
+	if (!SpawnedItemActor)
+	{
+		return;
+	}
+
+	SpawnedItemActors.Add(InItemInstance);
+
+}
+
+
+void UInventoryComponent::ServerDestroyItemActor_Implementation(UItemInstance* InItemInstance)
+{
+	if (!IsItemActorSpawned(InItemInstance))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Tried to destroy an ItemActor, but the instance had no ItemActor spawned"));
+		return;
+	}
+
+	InItemInstance->TryDestroyItemActor();
+
+	SpawnedItemActors.Remove(InItemInstance);
+}
+
+
+bool UInventoryComponent::IsItemActorSpawned(UItemInstance* InItemInstance) const
+{
+	if (SpawnedItemActors.Find(InItemInstance))
+	{
+		return true;
+	}
+	return false;
+}
 
 void UInventoryComponent::OnRep_Items()
 {

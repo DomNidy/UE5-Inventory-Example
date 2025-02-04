@@ -184,6 +184,8 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable)
 	static UItemInstance* CreateItemInstance(const FItemInstanceInitializer& ItemInitializer);
+
+
 protected:
 	friend class UInventoryComponent;
 	/**
@@ -204,26 +206,43 @@ protected:
 	//--------------------------------------------
 	// Item actors
 	//--------------------------------------------
-
-	/** Indicates whether or not the ItemActor is already in the scene (true if yes, false if not)*/
-	virtual bool IsItemActorSpawned() const;
 	/**
-	 * @brief Overridable function that can be used to implement creating actors/world representations of item instances
+	 * @brief Overridable function that can be used to implement creating actors/world
+	 * representations of item instances. For example, spawning a mesh in the world to
+	 * represent a sword.
 	 *
-	 * For example, spawning a mesh in the world to represent a sword
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Item")
-	virtual void SpawnItemActor();
+	virtual AActor* TrySpawnItemActor();
 
 	/**
-	 * @brief Overridable function that can be used to implement destroying spawned actors that were spawned with SpawnItemActor()
+	 * @brief Overridable function that can be used to implement destroying spawned
+	 * actors that were spawned with SpawnItemActor()
+	 *
+	 * Returns true if successfully destroyed, false if not.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Item")
-	virtual void DestroyItemActor();
+	virtual bool TryDestroyItemActor();
+private:
+	virtual AActor* InternalSpawnItemActor();
+	virtual bool InternalDestroyItemActor();
+private:
+	//--------------------------------------------
+	// Item actor spawn condition hook methods
+	//--------------------------------------------
+	/**
+	 * @brief Overridable function that can be used to implement custom
+	 * spawning behaviors/conditions.
+	 *
+	 * For example, you might not want an ItemActor to spawn when the player's
+	 * ASC has the "Debuff.Stunned" gameplay tag.
+	 *
+	 * @return true if the item can be spawned, false if not
+	 */
+	virtual bool CanSpawnItemActor();
+	virtual bool CanDestroyItemActor();
 private:
 	/**
-	 * @brief Invoked when the item actor is destroyed. 
-	 * 
+	 * @brief Invoked when the item actor is destroyed.
+	 *
 	 * Note: This method is bound to the OnDestroyed delegate of the actor, so it will be implicitly executed whenever
 	 * the actor is destroyed.
 	 */
