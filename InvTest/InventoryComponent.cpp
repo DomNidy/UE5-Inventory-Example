@@ -2,12 +2,21 @@
 
 
 #include "InventoryComponent.h"
+#include "Net/UnrealNetwork.h"
 
 UInventoryComponent::UInventoryComponent()
 {
 	SetIsReplicatedByDefault(true);
 	bReplicateUsingRegisteredSubObjectList = true;
 }
+
+void UInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UInventoryComponent, Items);
+}
+
 
 const UItemInstance* UInventoryComponent::CreateItemInInventory(TSubclassOf<UItemInstance> ItemClass, UItemData* ItemData)
 {
@@ -31,7 +40,7 @@ const UItemInstance* UInventoryComponent::CreateItemInInventory(TSubclassOf<UIte
 
 	/** Important: Add item to the replicated subobjects list, otherwise it wont be replicated*/
 	/** The item Items array itself will replicate, but the UItemInstance* inside of them will be nullptr.*/
-	// TODO: We will need to manually remove this whenever the item is removed from the inventroy
+	// TODO: We will need to manually remove items from this whenever the item is removed from the inventroy
 	AddReplicatedSubObject(Item);
 
 	Items.Add(Item);

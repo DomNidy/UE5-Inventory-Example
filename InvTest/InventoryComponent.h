@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "ItemInstance.h"
-#include "Net/UnrealNetwork.h"
 #include "InventoryComponent.generated.h"
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -17,13 +16,7 @@ public:
 	// Sets default values for this component's properties
 	UInventoryComponent();
 
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override
-	{
-		Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-		DOREPLIFETIME(UInventoryComponent, Items);
-	}
-
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	//--------------------------------------------
 	// Item instances: Creating
 	//--------------------------------------------

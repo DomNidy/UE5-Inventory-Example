@@ -212,6 +212,7 @@ protected:
 	 * represent a sword.
 	 *
 	 */
+	UFUNCTION()
 	virtual AActor* TrySpawnItemActor();
 
 	/**
@@ -220,6 +221,7 @@ protected:
 	 *
 	 * Returns true if successfully destroyed, false if not.
 	 */
+	UFUNCTION()
 	virtual bool TryDestroyItemActor();
 private:
 	virtual AActor* InternalSpawnItemActor();

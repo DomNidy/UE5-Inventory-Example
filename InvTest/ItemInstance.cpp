@@ -3,6 +3,7 @@
 
 #include "ItemInstance.h"
 #include "InventoryComponent.h"
+#include "Net/UnrealNetwork.h"
 
 void UItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
